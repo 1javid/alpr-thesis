@@ -264,16 +264,21 @@ Training outputs are saved to `runs/{model}_run/`
 ### 6. Inference
 
 ```bash
-# YOLO inference on single image
-python infer.py --model yolo --weights runs/yolov11_run/weights/best.pt --source test.jpg
+# YOLOv11 inference on single image
+python infer.py --model yolov11 --weights runs/yolov11_run/weights/best.pt --source test.jpg
+
+# YOLOv10 inference on directory
+python infer.py --model yolov10 --weights runs/yolov10_run/weights/best.pt --source test_images/
 
 # RT-DETRv2 inference (auto-loads config from base_config.yaml)
 python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/best.pth --source test.jpg
 
-# Results saved to runs/inference/
+# Results saved to model-specific directories:
+# - runs/inference/yolov11/    (for YOLOv11)
+# - runs/inference/yolov10/    (for YOLOv10)
+# - runs/inference/rtdetrv2/   (for RT-DETR)
 ```
 
-## 📊 Supported Models
 
 ### YOLOv11
 - **Framework**: Ultralytics

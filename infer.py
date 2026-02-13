@@ -2,22 +2,31 @@
 Inference Module - ALPR Object Detection System
 
 Provides unified inference interface for multiple object detection models.
-Supports both YOLO-based models (YOLOv10, YOLOv11) and RT-DETRv2 with
-consistent output format and visualization.
+Supports YOLOv10, YOLOv11, and RT-DETRv2 with consistent output format,
+automatic visualization, and organized result storage.
 
 Features:
-    - Multi-model support (YOLO, RT-DETRv2)
+    - Multi-model support (YOLOv10, YOLOv11, RT-DETRv2)
     - Single image or batch directory inference
-    - Automatic bounding box visualization
-    - Confidence score filtering
+    - Automatic bounding box visualization with confidence scores
+    - Model-specific output directories (organized results)
+    - Automatic config loading from base_config.yaml
     - GPU acceleration support
 
 Usage:
-    # YOLO inference
-    python infer.py --model yolo --weights runs/yolov11_run/weights/best.pt --source test_image.jpg
+    # YOLOv11 inference
+    python infer.py --model yolov11 --weights runs/yolov11_run/weights/best.pt --source test.jpg
     
-    # RT-DETRv2 inference
-    python infer.py --model rtdetrv2 --weights checkpoint.pth --model_config config.yaml --source test_dir/
+    # YOLOv10 inference
+    python infer.py --model yolov10 --weights runs/yolov10_run/weights/best.pt --source test.jpg
+    
+    # RT-DETRv2 inference (auto-loads config)
+    python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/checkpoint_best.pth --source test.jpg
+
+Output Directories:
+    - runs/inference/yolov11/    (YOLOv11 results)
+    - runs/inference/yolov10/    (YOLOv10 results)
+    - runs/inference/rtdetrv2/   (RT-DETR results)
 
 Author: ALPR Thesis Project
 """
@@ -117,8 +126,10 @@ class InferenceEngine:
                 - model_config: (RT-DETRv2 only) Path to model config YAML
         """
         self.args = args
-        self.output_dir = "runs/inference"
+        # Create model-specific output directory
+        self.output_dir = os.path.join("runs", "inference", args.model)
         os.makedirs(self.output_dir, exist_ok=True)
+        print(f"Inference results will be saved to: {self.output_dir}")
         
         # Load class names from master configuration
         with open("configs/base_config.yaml") as f:
@@ -149,8 +160,8 @@ class InferenceEngine:
         """
         print(f"Loading {self.args.model} from {self.args.weights}...")
         
-        if self.args.model == 'yolo':
-            # Load Ultralytics YOLO model (supports YOLOv10, YOLOv11)
+        if self.args.model in ['yolov10', 'yolov11']:
+            # Load Ultralytics YOLO model (YOLOv10 or YOLOv11)
             from ultralytics import YOLO
             return YOLO(self.args.weights)
 
@@ -241,7 +252,7 @@ class InferenceEngine:
         save_path = os.path.join(self.output_dir, os.path.basename(img_path))
         
         # === YOLO INFERENCE ===
-        if self.args.model == 'yolo':
+        if self.args.model in ['yolov10', 'yolov11']:
             # Run inference (Ultralytics handles preprocessing internally)
             results = self.model(img)
             
@@ -315,7 +326,7 @@ def main():
     and processes single image or batch of images.
     
     Command-line Arguments:
-        --model: Model type ('yolo' or 'rtdetrv2')
+        --model: Model type ('yolov10', 'yolov11', or 'rtdetrv2')
         --weights: Path to trained model weights file
         --source: Path to image file or directory of images
         --model_config: (Optional) Path to RT-DETR config YAML. If not provided,
@@ -324,10 +335,14 @@ def main():
     Behavior:
         - Single image: Runs inference on one image
         - Directory: Processes all .jpg and .png files in directory
+        - Results saved to: runs/inference/{model}/
     
     Examples:
-        # Single image with YOLO
-        python infer.py --model yolo --weights runs/yolov11_run/weights/best.pt --source test.jpg
+        # YOLOv11 inference
+        python infer.py --model yolov11 --weights runs/yolov11_run/weights/best.pt --source test.jpg
+        
+        # YOLOv10 inference
+        python infer.py --model yolov10 --weights runs/yolov10_run/weights/best.pt --source test.jpg
         
         # RT-DETRv2 (auto-loads config from base_config.yaml)
         python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/checkpoint_best.pth --source test.jpg
@@ -342,8 +357,8 @@ def main():
         '--model', 
         type=str, 
         required=True, 
-        choices=['yolo', 'rtdetrv2'],
-        help="Model architecture: 'yolo' (YOLOv10/v11) or 'rtdetrv2'"
+        choices=['yolov10', 'yolov11', 'rtdetrv2'],
+        help="Model architecture: 'yolov10', 'yolov11', or 'rtdetrv2'"
     )
     parser.add_argument(
         '--weights', 
