@@ -132,6 +132,11 @@ class DataConverter:
             YOLO (normalized): [x_center, y_center, width, height]
             COCO (pixel): [x_min, y_min, width, height]
         
+        Category ID Mapping:
+            YOLO uses 0-indexed class IDs (0, 1, 2, ...)
+            COCO standard uses 1-indexed category IDs (1, 2, 3, ...)
+            This method converts YOLO class IDs to COCO-compatible category IDs
+        
         Output:
             {target_root}/annotations/instances_{split}.json for each split
         
@@ -140,7 +145,8 @@ class DataConverter:
             Handles malformed label files gracefully by skipping invalid entries.
         """
         # Build COCO categories from class mapping
-        categories = [{"id": k, "name": v} for k, v in self.names.items()]
+        # Convert 0-indexed YOLO class IDs to 1-indexed COCO category IDs
+        categories = [{"id": k + 1, "name": v} for k, v in self.names.items()]
         
         print(f"[RT-DETR] Converting processed data to COCO format...")
 
@@ -196,10 +202,13 @@ class DataConverter:
                         
                         # Parse class ID (handle float-like strings, e.g., "0.0")
                         try:
-                            cls_id = int(float(parts[0]))
+                            yolo_class_id = int(float(parts[0]))  # YOLO uses 0-indexed
                         except ValueError:
                             # Cannot parse class ID, skip this line
                             continue
+                        
+                        # Convert YOLO class ID (0-indexed) to COCO category ID (1-indexed)
+                        coco_category_id = yolo_class_id + 1
                         
                         # Parse YOLO bbox (normalized coordinates)
                         x_c, y_c, w_bbox, h_bbox = map(float, parts[1:5])
@@ -216,7 +225,7 @@ class DataConverter:
                         annotations.append({
                             "id": ann_id,
                             "image_id": img_id,
-                            "category_id": cls_id,
+                            "category_id": coco_category_id,  # Use 1-indexed category ID
                             "bbox": [x_min, y_min, width, height],
                             "area": width * height,
                             "iscrowd": 0

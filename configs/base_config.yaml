@@ -119,10 +119,11 @@ models:
   # -----------------------------------------------------------------
   # Transformer-based detection with high accuracy.
   # Requires separate config file and COCO-format annotations.
+  # 
+  # Note: RT-DETR uses the hyperparameters defined in its own config file.
+  # To modify epochs, batch size, or learning rate, edit the config_file directly.
   rtdetrv2:
     config_file: "models/rtdetr_pytorch/configs/rtdetrv2/rtdetrv2_r18vd_sp3_120e_coco.yml"
-    epochs: 1                   # Training epochs
-    batch: 16                   # Batch size
 
 # ===================================================================
 # NOTES:

@@ -111,14 +111,8 @@ class RTDETRv2Trainer(BaseTrainer):
         )
         rtdetr_cfg.yaml_cfg['val_dataloader']['dataset']['ann_file'] = self.val_json
         
-        # Override training parameters from master config
-        print("Configuring training parameters...")
-        rtdetr_cfg.yaml_cfg['epoches'] = self.cfg['models']['rtdetrv2']['epochs']
-        
-        # Update batch size (total_batch_size across all GPUs)
-        rtdetr_cfg.yaml_cfg['train_dataloader']['total_batch_size'] = self.cfg['models']['rtdetrv2']['batch']
-        
         # Update number of classes based on our config
+        # Note: We do NOT override epochs or batch size - using author's carefully tuned defaults
         num_classes = len(self.cfg['classes'])
         rtdetr_cfg.yaml_cfg['num_classes'] = num_classes
         
@@ -128,12 +122,12 @@ class RTDETRv2Trainer(BaseTrainer):
         rtdetr_cfg.yaml_cfg['output_dir'] = save_dir
         
         print(f"Training configuration:")
-        print(f"  - Epochs: {rtdetr_cfg.yaml_cfg['epoches']}")
-        print(f"  - Batch size: {rtdetr_cfg.yaml_cfg['train_dataloader']['total_batch_size']}")
+        print(f"  - Using RT-DETR's default hyperparameters (epochs, batch size, LR schedule)")
         print(f"  - Number of classes: {num_classes}")
         print(f"  - Train annotations: {self.train_json}")
         print(f"  - Val annotations: {self.val_json}")
         print(f"  - Output directory: {save_dir}")
+        print(f"\n  To modify RT-DETR hyperparameters, edit: {rtdetr_config_file}")
         
         # Verify annotation files exist
         if not os.path.exists(self.train_json):
