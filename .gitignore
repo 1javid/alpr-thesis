@@ -1,0 +1,196 @@
+# ===================================================================
+# ALPR Thesis Project - Git Ignore Configuration
+# ===================================================================
+
+# ===================================================================
+# Python
+# ===================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# ===================================================================
+# Machine Learning / Data Science
+# ===================================================================
+
+# Datasets (RAW)
+raw_data/
+dataset/
+datasets/
+data/raw/
+
+# Processed Data
+processed_data/
+data/processed/
+data/interim/
+
+# Model Weights & Checkpoints
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.pkl
+*.pickle
+*.onnx
+*.pb
+*.tflite
+
+# Training Outputs
+runs/
+outputs/
+results/
+logs/
+wandb/
+mlruns/
+lightning_logs/
+
+# Tensorboard
+events.out.tfevents.*
+
+# ===================================================================
+# Project Specific
+# ===================================================================
+
+# Keep only the config templates, ignore specific runs
+configs/final_data.yaml
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Large files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Video files (if used for testing)
+*.mp4
+*.avi
+*.mov
+
+# ===================================================================
+# Operating System
+# ===================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===================================================================
+# Documentation (optional - uncomment if you want to ignore)
+# ===================================================================
+# *.pdf
+# *.docx
+# *.pptx
+
+# ===================================================================
+# Keep These Files (Force Include)
+# ===================================================================
+# Use ! to force include specific files if parent directory is ignored
+!configs/base_config.yaml
+!requirements.txt
+!README.md

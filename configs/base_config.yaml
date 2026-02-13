@@ -1,0 +1,146 @@
+# ===================================================================
+# ALPR Object Detection System - Master Configuration
+# ===================================================================
+# This configuration file controls all aspects of the training pipeline:
+# - Dataset paths and structure
+# - Data preprocessing and augmentation
+# - Model-specific hyperparameters
+# - Training output directories
+# ===================================================================
+
+# Project Settings
+# -------------------------------------------------------------------
+project_name: "object_detection_benchmark"
+output_dir: "./runs"  # Base directory for all training outputs
+
+# ===================================================================
+# 1. DATASET CONFIGURATION
+# ===================================================================
+# Define multiple datasets that will be merged into a unified format.
+# The data_engine will process and combine these datasets while
+# preventing filename collisions through prefixing.
+#
+# Required structure for each dataset:
+#   {root}/{train_subdir}/  - Training images
+#   {root}/{val_subdir}/    - Validation images
+#   {root}/{test_subdir}/   - Test images (optional)
+#   Labels should be in parallel directories (images/ -> labels/)
+# -------------------------------------------------------------------
+
+datasets:
+  # Public dataset (e.g., from Roboflow, Kaggle, etc.)
+  public:
+    root: "./raw_data/public_dataset"
+    train_subdir: "images/train"
+    val_subdir: "images/valid"
+  
+  # Private/custom dataset
+  private:
+    root: "./raw_data/private_dataset"
+    train_subdir: "images/train"
+    val_subdir: "images/valid"
+    test_subdir: "images/test"  # Optional test split
+
+# ===================================================================
+# 2. DATA ENGINE CONFIGURATION
+# ===================================================================
+# Controls data preprocessing, augmentation, and unified dataset creation.
+# The data engine merges multiple datasets, applies standardized resizing,
+# and generates augmented training samples.
+# -------------------------------------------------------------------
+
+data_engine:
+  # Output directory for processed, unified dataset
+  target_path: "./processed_data"
+  
+  # Target image size (square resize, maintains aspect ratio with padding)
+  img_size: 640
+  
+  # Augmentation Configuration
+  # -------------------------------------------------------------------
+  # Data augmentation is applied ONLY to training data to increase
+  # dataset diversity and improve model generalization.
+  # Uses Albumentations library for efficient, bbox-aware augmentations.
+  augmentation:
+    enable: True  # Set to False to disable augmentation
+    prob: 0.5     # Global augmentation probability
+    
+    # Specific augmentation parameters
+    params:
+      horizontal_flip: True        # Flip images horizontally (50% prob)
+      brightness_contrast: 0.2     # Adjust brightness/contrast (20% prob)
+      blur_limit: 3                # Apply blur effect (max kernel size: 3)
+      
+      # Additional augmentations are applied in augmentor.py:
+      # - ShiftScaleRotate: Geometric transformations
+      # - Always includes: Resize to target dimensions
+
+# ===================================================================
+# 3. CLASS DEFINITIONS
+# ===================================================================
+# Define object classes for detection. The ID must match the class IDs
+# used in your label files (YOLO format: first column in .txt files).
+# -------------------------------------------------------------------
+
+classes:
+  0: "license"  # License plate class
+  # Add more classes as needed:
+  # 1: "car"
+  # 2: "motorcycle"
+
+# ===================================================================
+# 4. MODEL-SPECIFIC CONFIGURATIONS
+# ===================================================================
+# Define hyperparameters for each supported model architecture.
+# Each model uses the same unified dataset but may have different
+# training settings based on architecture requirements.
+# -------------------------------------------------------------------
+
+models:
+  # YOLOv11 Configuration (Ultralytics)
+  # -----------------------------------------------------------------
+  # Latest YOLO architecture with improved accuracy and speed.
+  # Available variants: yolo11n, yolo11s, yolo11m, yolo11l, yolo11x
+  yolov11:
+    model_name: "yolo11s.pt"  # Pre-trained model variant
+    epochs: 2                  # Training epochs (increase for production)
+    batch: 16                  # Batch size (adjust based on GPU memory)
+  
+  # YOLOv10 Configuration (Ultralytics)
+  # -----------------------------------------------------------------
+  # End-to-end detection without NMS for faster inference.
+  # Available variants: yolov10n, yolov10s, yolov10m, yolov10b, yolov10l, yolov10x
+  yolov10:
+    model_name: "yolov10s.pt"  # Pre-trained model variant
+    epochs: 2                   # Training epochs
+    batch: 16                   # Batch size
+
+  # RT-DETRv2 Configuration (Official PyTorch)
+  # -----------------------------------------------------------------
+  # Transformer-based detection with high accuracy.
+  # Requires separate config file and COCO-format annotations.
+  rtdetrv2:
+    config_file: "models/rtdetr_pytorch/configs/rtdetrv2/rtdetrv2_r18vd_sp3_120e_coco.yml"
+    epochs: 1                   # Training epochs
+    batch: 16                   # Batch size
+
+# ===================================================================
+# NOTES:
+# ===================================================================
+# 1. After modifying this file, run data preparation:
+#    python data_engine/prepare.py
+#    python data_engine/converter.py
+#
+# 2. For production training, increase epochs:
+#    - YOLO models: 100-300 epochs
+#    - RT-DETRv2: 120+ epochs
+#
+# 3. Batch size guidelines:
+#    - 16GB GPU: batch=16-32
+#    - 24GB GPU: batch=32-64
+#    - Adjust based on image size and model variant
+#
+# 4. For multi-class detection:
+#    - Update 'classes' dictionary with all class IDs and names
+#    - Ensure label files use consistent class IDs
+# ===================================================================
