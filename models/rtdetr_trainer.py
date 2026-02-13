@@ -87,6 +87,10 @@ class RTDETRv2Trainer(BaseTrainer):
                 f"Please ensure the config file exists at the specified path."
             )
         
+        # Configure output directory BEFORE loading RT-DETR config
+        save_dir = os.path.join(self.cfg['output_dir'], 'rtdetrv2_run')
+        os.makedirs(save_dir, exist_ok=True)
+        
         # Load RT-DETR configuration
         print(f"Loading RT-DETR config from: {rtdetr_config_file}")
         rtdetr_cfg = YAMLConfig(
@@ -95,6 +99,11 @@ class RTDETRv2Trainer(BaseTrainer):
             use_amp=True,  # Use automatic mixed precision for faster training
             tuning=''
         )
+        
+        # Immediately override output_dir after loading config
+        # Need to set both the yaml_cfg dict AND the direct attribute
+        rtdetr_cfg.yaml_cfg['output_dir'] = save_dir
+        rtdetr_cfg.output_dir = save_dir  # This is what RT-DETR actually uses
         
         # Override data paths with our processed COCO annotations
         print("Configuring data paths...")
@@ -115,11 +124,6 @@ class RTDETRv2Trainer(BaseTrainer):
         # Note: We do NOT override epochs or batch size - using author's carefully tuned defaults
         num_classes = len(self.cfg['classes'])
         rtdetr_cfg.yaml_cfg['num_classes'] = num_classes
-        
-        # Configure output directory
-        save_dir = os.path.join(self.cfg['output_dir'], 'rtdetrv2_run')
-        os.makedirs(save_dir, exist_ok=True)
-        rtdetr_cfg.yaml_cfg['output_dir'] = save_dir
         
         print(f"Training configuration:")
         print(f"  - Using RT-DETR's default hyperparameters (epochs, batch size, LR schedule)")

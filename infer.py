@@ -159,14 +159,29 @@ class InferenceEngine:
             from src.core import YAMLConfig
             
             # RT-DETRv2 requires architecture config for model reconstruction
+            # If not provided, load from base_config.yaml
             if not self.args.model_config:
-                raise ValueError(
-                    "RT-DETRv2 requires --model_config argument! "
-                    "Please provide the YAML config file used during training."
-                )
+                print("No --model_config provided, loading from base_config.yaml...")
+                with open("configs/base_config.yaml") as f:
+                    base_cfg = yaml.safe_load(f)
+                model_config_path = base_cfg['models']['rtdetrv2']['config_file']
+                print(f"Using RT-DETR config: {model_config_path}")
+            else:
+                model_config_path = self.args.model_config
+                # Still need to load base_config for num_classes
+                with open("configs/base_config.yaml") as f:
+                    base_cfg = yaml.safe_load(f)
             
-            # Reconstruct model architecture from config
-            cfg = YAMLConfig(self.args.model_config, resume=self.args.weights)
+            # Load RT-DETR config WITHOUT building model yet
+            cfg = YAMLConfig(model_config_path, resume=None)
+            
+            # CRITICAL: Override num_classes BEFORE building model
+            # The config defaults to 80 (COCO), but trained model may have different number
+            num_classes = len(base_cfg['classes'])
+            cfg.yaml_cfg['num_classes'] = num_classes
+            print(f"Setting num_classes to {num_classes} (from base_config.yaml)")
+            
+            # Now build model with correct number of classes
             model = cfg.model
             
             # Load trained weights from checkpoint
@@ -303,7 +318,8 @@ def main():
         --model: Model type ('yolo' or 'rtdetrv2')
         --weights: Path to trained model weights file
         --source: Path to image file or directory of images
-        --model_config: (RT-DETRv2 only) Path to model configuration YAML
+        --model_config: (Optional) Path to RT-DETR config YAML. If not provided,
+                        automatically loaded from configs/base_config.yaml
     
     Behavior:
         - Single image: Runs inference on one image
@@ -313,9 +329,12 @@ def main():
         # Single image with YOLO
         python infer.py --model yolo --weights runs/yolov11_run/weights/best.pt --source test.jpg
         
-        # Batch processing with RT-DETRv2
+        # RT-DETRv2 (auto-loads config from base_config.yaml)
+        python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/checkpoint_best.pth --source test.jpg
+        
+        # RT-DETRv2 with custom config (optional)
         python infer.py --model rtdetrv2 --weights checkpoint.pth \
-                        --model_config configs/rtdetrv2.yaml --source test_images/
+                        --model_config path/to/custom_config.yaml --source test_images/
     """
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Unified Object Detection Inference")
@@ -342,7 +361,7 @@ def main():
         '--model_config', 
         type=str, 
         default=None, 
-        help="Path to model config YAML (required for RT-DETRv2)"
+        help="Path to model config YAML (optional for RT-DETRv2, uses base_config.yaml if not provided)"
     )
     
     args = parser.parse_args()

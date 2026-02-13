@@ -267,8 +267,8 @@ Training outputs are saved to `runs/{model}_run/`
 # YOLO inference on single image
 python infer.py --model yolo --weights runs/yolov11_run/weights/best.pt --source test.jpg
 
-# RT-DETRv2 inference on directory
-python infer.py --model rtdetrv2 --weights checkpoint.pth --model_config configs/rtdetrv2.yaml --source test_images/
+# RT-DETRv2 inference (auto-loads config from base_config.yaml)
+python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/best.pth --source test.jpg
 
 # Results saved to runs/inference/
 ```
