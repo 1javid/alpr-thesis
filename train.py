@@ -2,7 +2,8 @@
 Train Module - ALPR Object Detection System
 
 This module provides a unified training interface for multiple object detection models.
-It supports YOLOv11, YOLOv10, and RT-DETRv2 architectures with configuration-driven training.
+All models use the Ultralytics framework for consistency and ease of use.
+Supports YOLOv11, YOLOv10, and RT-DETRv2 architectures with configuration-driven training.
 
 Usage:
     python train.py --model yolov11 --config configs/base_config.yaml
@@ -22,6 +23,7 @@ sys.path.append(os.getcwd())
 
 from models.yolov11_trainer import YOLOv11Trainer
 from models.yolov10_trainer import YOLOv10Trainer
+from models.rtdetr_trainer import RTDETRv2Trainer
 
 def main():
     """
@@ -45,7 +47,7 @@ def main():
         type=str, 
         required=True, 
         choices=['yolov11', 'yolov10', 'rtdetrv2'],
-        help="Model architecture to train: 'yolov11', 'yolov10', or 'rtdetrv2' (Official PyTorch)"
+        help="Model architecture to train: 'yolov11', 'yolov10', or 'rtdetrv2' (all via Ultralytics)"
     )
     parser.add_argument(
         '--config', 
@@ -69,8 +71,6 @@ def main():
         trainer = YOLOv10Trainer(cfg)
 
     elif args.model == 'rtdetrv2':
-        # Lazy import for RT-DETRv2 to avoid unnecessary dependencies
-        from models.rtdetr_trainer import RTDETRv2Trainer
         trainer = RTDETRv2Trainer(cfg)
 
     # Execute training loop

@@ -4,7 +4,9 @@ A modular, multi-model object detection framework for Automatic License Plate Re
 
 ## 🎯 Features
 
-- **Multi-Model Support**: Train and compare YOLOv11, YOLOv10, and RT-DETRv2
+- **Multi-Model Support**: Train and compare YOLOv11, YOLOv10, and RT-DETRv2 (all via Ultralytics)
+- **Unified Framework**: All models use Ultralytics for consistency and ease of use
+- **Large Model Variants**: Uses L (Large) size models for all architectures
 - **Unified Data Pipeline**: Automated dataset merging, preprocessing, and augmentation
 - **Format Conversion**: Automatic conversion between YOLO and COCO annotation formats
 - **Flexible Training**: Configuration-driven training with model-specific hyperparameters
@@ -25,7 +27,8 @@ alpr-thesis/
 ├── models/
 │   ├── base_trainer.py        # Abstract trainer base class
 │   ├── yolov11_trainer.py     # YOLOv11 training implementation
-│   └── yolov10_trainer.py     # YOLOv10 training implementation
+│   ├── yolov10_trainer.py     # YOLOv10 training implementation
+│   └── rtdetr_trainer.py      # RT-DETRv2 training implementation
 ├── train.py                   # Training entry point
 ├── infer.py                   # Inference entry point
 └── requirements.txt           # Project dependencies
@@ -241,10 +244,8 @@ python data_engine/converter.py
 
 This creates:
 - `processed_data/` directory with unified dataset
-- `configs/final_data.yaml` for YOLO models (uses 0-indexed class IDs)
-- `processed_data/annotations/*.json` for COCO-compatible models (uses 1-indexed category IDs)
-
-**Note**: RT-DETRv2 requires COCO-format annotations with 1-indexed category IDs (standard COCO format). The converter automatically handles this conversion from YOLO's 0-indexed class IDs.
+- `configs/final_data.yaml` for all Ultralytics models (YOLO format)
+- `processed_data/annotations/*.json` for COCO-format compatibility
 
 ### 5. Training
 
@@ -270,8 +271,8 @@ python infer.py --model yolov11 --weights runs/yolov11_run/weights/best.pt --sou
 # YOLOv10 inference on directory
 python infer.py --model yolov10 --weights runs/yolov10_run/weights/best.pt --source test_images/
 
-# RT-DETRv2 inference (auto-loads config from base_config.yaml)
-python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/best.pth --source test.jpg
+# RT-DETRv2 inference
+python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/weights/best.pt --source test.jpg
 
 # Results saved to model-specific directories:
 # - runs/inference/yolov11/    (for YOLOv11)
@@ -280,26 +281,26 @@ python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/best.pth --source t
 ```
 
 
-### YOLOv11
+### YOLOv11-L
 - **Framework**: Ultralytics
-- **Variants**: nano, small, medium, large, extra-large
+- **Variant**: Large (yolo11l.pt)
 - **Format**: YOLO (normalized center-format)
 - **Hyperparameters**: Configured in `base_config.yaml`
 - **Best For**: Real-time inference with excellent accuracy
 
-### YOLOv10
+### YOLOv10-L
 - **Framework**: Ultralytics
-- **Variants**: nano, small, medium, balanced, large, extra-large
+- **Variant**: Large (yolov10l.pt)
 - **Format**: YOLO (normalized center-format)
 - **Hyperparameters**: Configured in `base_config.yaml`
 - **Best For**: End-to-end detection without NMS
 
-### RT-DETRv2
-- **Framework**: Official PyTorch
-- **Format**: COCO JSON
-- **Hyperparameters**: Uses author's config file (carefully tuned defaults)
+### RT-DETRv2-L
+- **Framework**: Ultralytics
+- **Variant**: Large (rtdetr-l.pt)
+- **Format**: YOLO (normalized center-format)
+- **Hyperparameters**: Configured in `base_config.yaml`
 - **Best For**: Transformer-based detection with high accuracy
-- **Note**: To modify epochs/batch size, edit the RT-DETR config file directly
 
 ## 🎨 Data Augmentation
 
@@ -337,23 +338,32 @@ datasets:
 
 ### Model Hyperparameters
 
+All models use consistent configuration via `base_config.yaml`:
+
 ```yaml
 models:
-  # YOLOv11 and YOLOv10 - Hyperparameters are set here
+  # YOLOv11-L (Large variant)
   yolov11:
-    model_name: "yolo11s.pt"
-    epochs: 100      # Directly controls training
-    batch: 16        # Directly controls batch size
-  yolov10:
-    model_name: "yolov10s.pt"
-    epochs: 100      # Directly controls training
-    batch: 16        # Directly controls batch size
+    model_name: "yolo11l.pt"
+    epochs: 100      # Training epochs
+    batch: 16        # Batch size (adjust for Large model)
   
-  # RT-DETRv2 - Hyperparameters come from its own config file
+  # YOLOv10-L (Large variant)
+  yolov10:
+    model_name: "yolov10l.pt"
+    epochs: 100      # Training epochs
+    batch: 16        # Batch size (adjust for Large model)
+  
+  # RT-DETRv2-L (Large variant)
   rtdetrv2:
-    config_file: "models/rtdetr_pytorch/configs/rtdetrv2/rtdetrv2_r18vd_sp3_120e_coco.yml"
-    # To modify RT-DETR hyperparameters, edit the config_file directly
+    model_name: "rtdetr-l.pt"
+    epochs: 100      # Training epochs
+    batch: 16        # Batch size (adjust for Large model)
 ```
+
+**Note**: Large models require more GPU memory. Recommended batch sizes:
+- 16GB GPU: batch=8-16
+- 24GB GPU: batch=16-32
 
 ### Class Names
 

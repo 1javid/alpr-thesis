@@ -83,10 +83,7 @@ data_engine:
 # -------------------------------------------------------------------
 
 classes:
-  0: "license"  # License plate class
-  # Add more classes as needed:
-  # 1: "car"
-  # 2: "motorcycle"
+  0: "license"
 
 # ===================================================================
 # 4. MODEL-SPECIFIC CONFIGURATIONS
@@ -102,28 +99,28 @@ models:
   # Latest YOLO architecture with improved accuracy and speed.
   # Available variants: yolo11n, yolo11s, yolo11m, yolo11l, yolo11x
   yolov11:
-    model_name: "yolo11s.pt"  # Pre-trained model variant
-    epochs: 2                  # Training epochs (increase for production)
-    batch: 16                  # Batch size (adjust based on GPU memory)
+    model_name: "yolo11l.pt"  # Pre-trained model variant (Large)
+    epochs: 100               # Training epochs (increase for production)
+    batch: 16                 # Batch size (adjust based on GPU memory)
   
   # YOLOv10 Configuration (Ultralytics)
   # -----------------------------------------------------------------
   # End-to-end detection without NMS for faster inference.
   # Available variants: yolov10n, yolov10s, yolov10m, yolov10b, yolov10l, yolov10x
   yolov10:
-    model_name: "yolov10s.pt"  # Pre-trained model variant
-    epochs: 2                   # Training epochs
-    batch: 16                   # Batch size
+    model_name: "yolov10l.pt"  # Pre-trained model variant (Large)
+    epochs: 100                # Training epochs
+    batch: 16                  # Batch size
 
-  # RT-DETRv2 Configuration (Official PyTorch)
+  # RT-DETRv2 Configuration (Ultralytics)
   # -----------------------------------------------------------------
   # Transformer-based detection with high accuracy.
-  # Requires separate config file and COCO-format annotations.
-  # 
-  # Note: RT-DETR uses the hyperparameters defined in its own config file.
-  # To modify epochs, batch size, or learning rate, edit the config_file directly.
+  # Uses Ultralytics implementation for consistency across all models.
+  # Available variants: rtdetr-l, rtdetr-x
   rtdetrv2:
-    config_file: "models/rtdetr_pytorch/configs/rtdetrv2/rtdetrv2_r18vd_sp3_120e_coco.yml"
+    model_name: "rtdetr-l.pt"  # Pre-trained model variant (Large)
+    epochs: 100                # Training epochs
+    batch: 16                  # Batch size
 
 # ===================================================================
 # NOTES:
@@ -134,14 +131,17 @@ models:
 #
 # 2. For production training, increase epochs:
 #    - YOLO models: 100-300 epochs
-#    - RT-DETRv2: 120+ epochs
+#    - RT-DETRv2: 100-200 epochs
 #
-# 3. Batch size guidelines:
-#    - 16GB GPU: batch=16-32
-#    - 24GB GPU: batch=32-64
+# 3. Batch size guidelines (for Large models):
+#    - 16GB GPU: batch=8-16
+#    - 24GB GPU: batch=16-32
 #    - Adjust based on image size and model variant
+#    - Large models require more memory than small variants
 #
 # 4. For multi-class detection:
 #    - Update 'classes' dictionary with all class IDs and names
 #    - Ensure label files use consistent class IDs
+#
+# 5. All models now use Ultralytics framework for consistency
 # ===================================================================
