@@ -102,6 +102,7 @@ models:
     model_name: "yolo11l.pt"  # Pre-trained model variant (Large)
     epochs: 100               # Training epochs (increase for production)
     batch: 16                 # Batch size (adjust based on GPU memory)
+    patience: 20              # Early stopping patience (epochs without improvement)
   
   # YOLOv10 Configuration (Ultralytics)
   # -----------------------------------------------------------------
@@ -111,6 +112,7 @@ models:
     model_name: "yolov10l.pt"  # Pre-trained model variant (Large)
     epochs: 100                # Training epochs
     batch: 16                  # Batch size
+    patience: 20               # Early stopping patience (epochs without improvement)
 
   # RT-DETRv2 Configuration (Ultralytics)
   # -----------------------------------------------------------------
@@ -121,6 +123,7 @@ models:
     model_name: "rtdetr-l.pt"  # Pre-trained model variant (Large)
     epochs: 100                # Training epochs
     batch: 16                  # Batch size
+    patience: 20               # Early stopping patience (epochs without improvement)
 
 # ===================================================================
 # NOTES:

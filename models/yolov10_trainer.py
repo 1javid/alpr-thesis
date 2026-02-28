@@ -63,10 +63,11 @@ class YOLOv10Trainer(BaseTrainer):
             epochs=self.cfg['models']['yolov10']['epochs'],         # Training epochs
             batch=self.cfg['models']['yolov10']['batch'],           # Batch size
             imgsz=self.cfg['data_engine']['img_size'],              # Input image size
-            save_dir=save_dir,                                       # Output directory
-            workers=4,                                               # DataLoader workers
-            exist_ok=True,                                           # Overwrite existing runs
-            device=0                                                 # GPU device (0=first GPU, 'cpu' for CPU, [0,1,2,3] for multi-GPU)
+            save_dir=save_dir,                                      # Output directory
+            workers=4,                                              # DataLoader workers
+            exist_ok=True,                                          # Overwrite existing runs
+            device=0,                                               # GPU device (0=first GPU, 'cpu' for CPU, [0,1,2,3] for multi-GPU)
+            patience=self.cfg['models']['yolov10']['patience'],     # Early stopping patience
         )
         
         print(f"YOLOv10 Training Finished. Weights saved at: {save_dir}/weights/best.pt")
