@@ -7,10 +7,9 @@ processing for validation/test sets.
 
 Key Features:
     - Standardized image resizing
-    - Horizontal flipping
     - Brightness/contrast adjustments
     - Blur effects
-    - Geometric transformations (shift, scale, rotate)
+    - Mild geometric transformations (perspective, crop, shear, shift/scale/rotate)
     - Bounding box preservation during augmentation
 
 Author: ALPR Thesis Project
@@ -61,28 +60,69 @@ class DataAugmentor:
 
         # Add stochastic augmentations if enabled
         if cfg['augmentation']['enable']:
-            # Horizontal flip (mimics license plate viewing from different angles)
-            if params.get('horizontal_flip'):
-                transforms.append(A.HorizontalFlip(p=0.5))
-            
-            # Brightness and contrast variations (simulates different lighting conditions)
+            # Brightness and contrast variations (simulates different lighting conditions).
+            # Use small limits (±0.1) and moderate probability (0.2).
             if params.get('brightness_contrast'):
-                transforms.append(A.RandomBrightnessContrast(p=0.2))
+                transforms.append(
+                    A.RandomBrightnessContrast(
+                        brightness_limit=0.1,
+                        contrast_limit=0.1,
+                        p=0.2,
+                    )
+                )
             
-            # Blur effect (simulates motion blur or camera focus issues)
+            # Blur effect (simulates mild motion blur or camera focus issues)
             if params.get('blur_limit'):
-                transforms.append(A.Blur(blur_limit=params.get('blur_limit'), p=0.1))
+                transforms.append(
+                    A.Blur(
+                        blur_limit=params.get('blur_limit'),
+                        p=0.1,
+                    )
+                )
 
-            # Geometric transformations (simulates different camera angles and distances)
-            # shift_limit: Translation up to 6.25% of image dimensions
+            # Perspective distortion (simulates slight viewpoint changes)
+            if params.get('perspective'):
+                transforms.append(
+                    A.Perspective(
+                        scale=(0.02, 0.08),  # slight perspective changes
+                        p=0.2,
+                    )
+                )
+
+            # Random crop with resize back to target size (light crop)
+            if params.get('random_crop'):
+                transforms.append(
+                    A.RandomResizedCrop(
+                        height=self.target_size,
+                        width=self.target_size,
+                        scale=(0.85, 1.0),   # keep at least 85% of area
+                        ratio=(0.9, 1.1),
+                        p=0.2,
+                    )
+                )
+
+            # Shear via affine transformation (simulates mild camera skew)
+            if params.get('shear'):
+                transforms.append(
+                    A.Affine(
+                        shear=(-5, 5),      # small shear in degrees
+                        p=0.2,
+                    )
+                )
+
+            # Geometric transformations (simulates small shifts, scales, rotations)
+            # shift_limit: Translation up to ~6% of image dimensions
             # scale_limit: Scaling by ±10%
             # rotate_limit: Rotation up to ±10 degrees
-            transforms.append(A.ShiftScaleRotate(
-                shift_limit=0.0625, 
-                scale_limit=0.1, 
-                rotate_limit=10, 
-                p=0.2
-            ))
+            if params.get('shift_scale_rotate', True):
+                transforms.append(
+                    A.ShiftScaleRotate(
+                        shift_limit=0.0625, 
+                        scale_limit=0.1, 
+                        rotate_limit=10, 
+                        p=0.2,
+                    )
+                )
 
         # Compose all transformations with bounding box support
         # Uses YOLO format: normalized [x_center, y_center, width, height]

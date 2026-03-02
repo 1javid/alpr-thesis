@@ -67,12 +67,18 @@ data_engine:
     
     # Specific augmentation parameters
     params:
-      horizontal_flip: True        # Flip images horizontally (50% prob)
       brightness_contrast: 0.2     # Adjust brightness/contrast (20% prob)
       blur_limit: 3                # Apply blur effect (max kernel size: 3)
+      shift_scale_rotate: True     # Enable shift/scale/rotate geometric transform
+      perspective: False           # Random perspective distortion (off by default)
+      random_crop: False           # Random resized crop (off by default)
+      shear: False                 # Shear transform via affine warp (off by default)
       
       # Additional augmentations are applied in augmentor.py:
       # - ShiftScaleRotate: Geometric transformations
+      # - Perspective: Simulated viewpoint changes
+      # - RandomResizedCrop: Random cropping + resize back to target size
+      # - Affine shear: Shearing to simulate camera skew
       # - Always includes: Resize to target dimensions
 
 # ===================================================================
