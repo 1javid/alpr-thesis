@@ -89,14 +89,14 @@ class DataAugmentor:
                     )
                 )
 
-            # Random crop with resize back to target size (light crop)
+            # Random crop with resize back to target size (light crop).
+            # Use RandomSizedBBoxSafeCrop to avoid schema issues with RandomResizedCrop.
             if params.get('random_crop'):
                 transforms.append(
-                    A.RandomResizedCrop(
+                    A.RandomSizedBBoxSafeCrop(
                         height=self.target_size,
                         width=self.target_size,
-                        scale=(0.85, 1.0),   # keep at least 85% of area
-                        ratio=(0.9, 1.1),
+                        erosion_rate=0.1,   # keep most of the bbox area
                         p=0.2,
                     )
                 )
