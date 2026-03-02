@@ -22,8 +22,11 @@ Usage:
                        --labels path/to/labels.csv
 
 CSV Requirements:
-    Must contain columns: file_name, xmin, ymin, xmax, ymax (pixel coordinates).
-    Additional columns are ignored.
+    Must contain columns:
+        - file_name
+        - xmin, ymin, xmax, ymax (pixel coordinates)
+        - plates_count  (number of license plates in the image)
+    Only images with plates_count == 1 are evaluated; others are ignored.
 
 Author: ALPR Thesis Project
 """
@@ -51,31 +54,37 @@ sys.path.append(os.getcwd())
 
 def load_ground_truth(csv_path):
     """
-    Load ground truth bounding boxes from a CSV file.
+    Load ground truth bounding boxes from a CSV file, together with plate counts.
 
     One row per bounding box. Multiple rows may share the same file_name
     (one per license plate in the image).
 
     Args:
-        csv_path (str): Path to CSV with columns: file_name, xmin, ymin, xmax, ymax.
+        csv_path (str): Path to CSV with columns:
+                        file_name, xmin, ymin, xmax, ymax, plates_count.
                         Additional columns are ignored.
 
     Returns:
-        dict: {file_name: [[xmin, ymin, xmax, ymax], ...]}
+        gt_boxes (dict): {file_name: [[xmin, ymin, xmax, ymax], ...]}
+        plate_counts (dict): {file_name: int}
     """
     df = pd.read_csv(csv_path)
-    required = {"file_name", "xmin", "ymin", "xmax", "ymax"}
+    required = {"file_name", "xmin", "ymin", "xmax", "ymax", "plates_count"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"CSV is missing required columns: {missing}")
 
     gt = defaultdict(list)
+    plate_counts = {}
     for _, row in df.iterrows():
+        fname = str(row["file_name"])
         box = [float(row["xmin"]), float(row["ymin"]),
                float(row["xmax"]), float(row["ymax"])]
-        gt[str(row["file_name"])].append(box)
+        gt[fname].append(box)
+        # If multiple rows share the same file_name they should share the same plates_count
+        plate_counts[fname] = int(row["plates_count"])
 
-    return dict(gt)
+    return dict(gt), plate_counts
 
 
 # ---------------------------------------------------------------------------
@@ -514,7 +523,7 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
     os.makedirs(output_dir, exist_ok=True)
 
     print(f"Loading ground truth from: {labels_csv}")
-    ground_truth = load_ground_truth(labels_csv)
+    ground_truth, plate_counts = load_ground_truth(labels_csv)
 
     print(f"Loading model: {model_type} from {weights_path}")
     model = load_model(model_type, weights_path)
@@ -544,6 +553,12 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
 
         if img_file not in ground_truth:
             print(f"  Skipping {img_file}: no ground truth entry in CSV.")
+            skipped += 1
+            continue
+
+        # Only consider images with exactly one license plate
+        if plate_counts.get(img_file, 0) != 1:
+            print(f"  Skipping {img_file}: plates_count={plate_counts.get(img_file, 0)} != 1.")
             skipped += 1
             continue
 
