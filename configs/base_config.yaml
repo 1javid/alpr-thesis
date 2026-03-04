@@ -13,6 +13,13 @@
 project_name: "object_detection_benchmark"
 output_dir: "./runs"  # Base directory for all training outputs
 
+# Global experiment seed for reproducibility
+# This seed is applied to Python's random module, NumPy, PyTorch,
+# and, where supported, underlying data-loading frameworks.
+# Note: perfect bitwise determinism on GPU is not guaranteed,
+# but runs will be highly repeatable.
+seed: 42
+
 # ===================================================================
 # 1. DATASET CONFIGURATION
 # ===================================================================

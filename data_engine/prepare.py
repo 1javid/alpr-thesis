@@ -28,10 +28,13 @@ Author: ALPR Thesis Project
 
 import os
 import shutil
-import yaml
+
 import cv2
+import yaml
 from tqdm import tqdm
+
 from augmentor import DataAugmentor
+from utils.seed_utils import get_seed_from_config, set_global_seed
 
 def save_yolo_data(save_dir, split, filename, image, bboxes, class_ids):
     """
@@ -94,6 +97,12 @@ def main():
     # Load master configuration
     with open("configs/base_config.yaml", "r") as f:
         cfg = yaml.safe_load(f)
+
+    # Apply global experiment seed so that any stochastic components
+    # in data processing/augmentation are repeatable across runs.
+    seed = get_seed_from_config(cfg)
+    set_global_seed(seed)
+    print(f"[Data Engine] Using global seed: {seed}")
 
     # Create output directory structure
     target_root = cfg['data_engine']['target_path']

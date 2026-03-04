@@ -14,9 +14,10 @@ Author: ALPR Thesis Project
 """
 
 import argparse
-import yaml
 import os
 import sys
+
+import yaml
 
 # Ensure current directory is in Python path for module imports
 sys.path.append(os.getcwd())
@@ -24,6 +25,7 @@ sys.path.append(os.getcwd())
 from models.yolov11_trainer import YOLOv11Trainer
 from models.yolov10_trainer import YOLOv10Trainer
 from models.rtdetr_trainer import RTDETRv2Trainer
+from utils.seed_utils import get_seed_from_config, set_global_seed
 
 def main():
     """
@@ -61,7 +63,10 @@ def main():
     with open(args.config) as f:
         cfg = yaml.safe_load(f)
 
-    print(f"Initializing training for model: {args.model}")
+    # Apply global experiment seed for reproducibility
+    seed = get_seed_from_config(cfg)
+    set_global_seed(seed)
+    print(f"Initializing training for model: {args.model} (seed={seed})")
 
     # Initialize appropriate trainer based on model selection
     if args.model == 'yolov11':
