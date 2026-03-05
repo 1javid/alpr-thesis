@@ -32,10 +32,17 @@ Author: ALPR Thesis Project
 
 import os
 import shutil
+import sys
 
 import cv2
 import yaml
 from tqdm import tqdm
+
+# Ensure project root is on sys.path so that `utils` can be imported
+# even when this file is executed from inside the `data_engine` directory.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
 
 try:
     # When imported as a package module.
