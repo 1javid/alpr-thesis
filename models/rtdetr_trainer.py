@@ -69,6 +69,7 @@ class RTDETRv2Trainer(BaseTrainer):
             exist_ok=True,                                          # Overwrite existing runs
             device=0,                                               # GPU device (0=first GPU, 'cpu' for CPU, [0,1,2,3] for multi-GPU)
             patience=self.cfg['models']['rtdetrv2']['patience'],    # Early stopping patience
+            **self.ultralytics_augmentation_kwargs(),               # Ultralytics training-time augmentation
         )
         
         print(f"RT-DETRv2 Training Finished. Weights saved at: {save_dir}/weights/best.pt")

@@ -3,16 +3,15 @@ Data Engine Package - ALPR Object Detection System
 
 This package handles all data processing operations including:
 - Multi-dataset merging and preprocessing
-- Data augmentation with bounding box support
 - Format conversion (YOLO ↔ COCO)
 
 Modules:
-    prepare: Dataset merging, preprocessing, and augmentation
+    prepare: Dataset merging and resize-only preprocessing
     converter: Format conversion between YOLO and COCO formats
-    augmentor: Image augmentation pipeline using Albumentations
+    augmentor: Resize-only preprocessing helper (legacy name)
 
 Typical Workflow:
-    1. Run prepare.py to merge and augment datasets
+    1. Run prepare.py to merge and resize datasets
     2. Run converter.py to generate model-specific format files
     3. Use generated files for model training
 

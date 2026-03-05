@@ -28,9 +28,6 @@ scipy                      # Scientific computing
 pandas                     # Data manipulation
 numpy                      # Array operations
 
-# Data Augmentation
-albumentations>=1.3.1      # Advanced image augmentation with bbox support
-
 # Object Detection Models
 ultralytics                # YOLOv11, YOLOv10, RT-DETRv2 (unified framework)
 

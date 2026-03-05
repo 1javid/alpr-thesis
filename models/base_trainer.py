@@ -11,6 +11,7 @@ Author: ALPR Thesis Project
 import os
 import yaml
 from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional, Set
 
 class BaseTrainer(ABC):
     """
@@ -53,6 +54,94 @@ class BaseTrainer(ABC):
         self.train_json = os.path.join(self.data_root, "annotations", "instances_train.json")
         self.val_json = os.path.join(self.data_root, "annotations", "instances_val.json")
         self.test_json = os.path.join(self.data_root, "annotations", "instances_test.json")
+
+    def _ultralytics_valid_cfg_keys(self) -> Optional[Set[str]]:
+        """
+        Best-effort discovery of valid Ultralytics train() configuration keys.
+
+        Ultralytics validates kwargs against its default config; passing unknown keys
+        can raise runtime errors. We try to load the default config keys and filter
+        any computed kwargs accordingly.
+        """
+        try:
+            from ultralytics.cfg import DEFAULT_CFG_DICT  # type: ignore
+
+            if isinstance(DEFAULT_CFG_DICT, dict):
+                return set(DEFAULT_CFG_DICT.keys())
+        except Exception:
+            pass
+
+        try:
+            import pkgutil
+
+            data = pkgutil.get_data("ultralytics", "cfg/default.yaml")
+            if not data:
+                return None
+            defaults = yaml.safe_load(data.decode("utf-8"))
+            if isinstance(defaults, dict):
+                return set(defaults.keys())
+        except Exception:
+            return None
+
+        return None
+
+    def _filter_ultralytics_kwargs(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        valid = self._ultralytics_valid_cfg_keys()
+        if not valid:
+            return kwargs
+        return {k: v for k, v in kwargs.items() if k in valid}
+
+    def ultralytics_augmentation_kwargs(self) -> Dict[str, Any]:
+        """
+        Map this project's augmentation config onto Ultralytics training kwargs.
+
+        This replaces the previous Albumentations *offline* augmentation.
+        """
+        aug_cfg = (self.cfg.get("data_engine") or {}).get("augmentation") or {}
+        params = aug_cfg.get("params") or {}
+        enable = bool(aug_cfg.get("enable", True))
+
+        # A small, conservative set of Ultralytics augmentations that roughly matches
+        # the previous Albumentations pipeline (color jitter + mild affine).
+        if not enable:
+            aug = {
+                "hsv_h": 0.0,
+                "hsv_s": 0.0,
+                "hsv_v": 0.0,
+                "degrees": 0.0,
+                "translate": 0.0,
+                "scale": 0.0,
+                "shear": 0.0,
+                "perspective": 0.0,
+                "flipud": 0.0,
+                "fliplr": 0.0,
+                "mosaic": 0.0,
+                "mixup": 0.0,
+                "copy_paste": 0.0,
+            }
+            return self._filter_ultralytics_kwargs(aug)
+
+        use_affine = bool(params.get("shift_scale_rotate", True))
+        use_bc = bool(params.get("brightness_contrast"))
+
+        aug = {
+            # Previous pipeline used small brightness/contrast changes; HSV is the closest match.
+            "hsv_h": 0.0,
+            "hsv_s": 0.2 if use_bc else 0.0,
+            "hsv_v": 0.2 if use_bc else 0.0,
+            # Mild geometric transforms similar to ShiftScaleRotate/Affine.
+            "degrees": 10.0 if use_affine else 0.0,
+            "translate": 0.0625 if use_affine else 0.0,
+            "scale": 0.10 if use_affine else 0.0,
+            "shear": 5.0 if params.get("shear") else 0.0,
+            "perspective": 0.001 if params.get("perspective") else 0.0,
+            # Avoid introducing strong new augmentations not used previously.
+            "mosaic": 0.0,
+            "mixup": 0.0,
+            "copy_paste": 0.0,
+        }
+
+        return self._filter_ultralytics_kwargs(aug)
 
     @abstractmethod
     def train(self):

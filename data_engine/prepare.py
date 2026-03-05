@@ -2,15 +2,19 @@
 Data Preparation Module
 
 Merges and preprocesses multiple object detection datasets into a unified format.
-Handles dataset merging, image resizing, augmentation, and standardized directory
+Handles dataset merging, image resizing, and standardized directory
 structure creation for training, validation, and test splits.
 
 Key Features:
     - Multi-dataset merging with namespace protection
     - Standardized resize to target dimensions
-    - Training data augmentation (optional)
     - YOLO-format output (images + text labels)
     - Organized directory structure
+
+Note:
+    This project performs augmentation during training using Ultralytics'
+    built-in pipeline. The data engine intentionally writes **clean, resized**
+    samples only.
 
 Directory Structure Created:
     {target_path}/
@@ -33,7 +37,12 @@ import cv2
 import yaml
 from tqdm import tqdm
 
-from augmentor import DataAugmentor
+try:
+    # When imported as a package module.
+    from .augmentor import DataAugmentor
+except ImportError:
+    # When executed as a script: `python data_engine/prepare.py`
+    from augmentor import DataAugmentor
 from utils.seed_utils import get_seed_from_config, set_global_seed
 
 def save_yolo_data(save_dir, split, filename, image, bboxes, class_ids):
@@ -79,16 +88,14 @@ def main():
     Workflow:
         1. Load configuration from base_config.yaml
         2. Create standardized output directory structure
-        3. Initialize augmentation pipeline
+        3. Initialize resize-only preprocessing
         4. Process each dataset:
            - Merge multiple datasets into unified structure
            - Apply resize to all images
-           - Generate augmented variants for training data
            - Save in YOLO format
     
     Processing Strategy:
-        - Training: Save clean (resized) + augmented versions
-        - Validation/Test: Save clean (resized) only
+        - All splits: Save clean (resized) only
     
     Output:
         Unified dataset at {target_path} with standardized structure
@@ -162,18 +169,6 @@ def main():
                     target_root, split_name, clean_name, 
                     orig_img, orig_bboxes, orig_cls
                 )
-
-                # Generate augmented variant for training data only
-                if split_name == 'train' and cfg['data_engine']['augmentation']['enable']:
-                    # Apply full augmentation pipeline (resize + stochastic transforms)
-                    aug_img, aug_bboxes, aug_cls = augmentor.process(img_path, lbl_path)
-                    
-                    if aug_img is not None:
-                        aug_name = f"{name}_aug_{img_file}"
-                        save_yolo_data(
-                            target_root, split_name, aug_name, 
-                            aug_img, aug_bboxes, aug_cls
-                        )
 
     print(f"\nSUCCESS. Unified dataset saved to: {target_root}")
 

@@ -7,7 +7,7 @@ Multi-model object detection framework for license plate recognition research. T
 - Train and compare three models: YOLOv11-L, YOLOv10-L, RT-DETRv2-L
 - All models use Ultralytics framework for consistency
 - Merge multiple datasets automatically
-- Data augmentation with Albumentations
+- Data augmentation via Ultralytics (training-time)
 - Single config file for everything
 - Simple training and inference scripts
 
@@ -19,9 +19,9 @@ alpr-thesis/
 │   ├── base_config.yaml      # Master configuration file
 │   └── final_data.yaml        # Auto-generated YOLO data config
 ├── data_engine/
-│   ├── prepare.py             # Dataset merging and augmentation
+│   ├── prepare.py             # Dataset merging and resize-only preprocessing
 │   ├── converter.py           # Format conversion (YOLO ↔ COCO)
-│   └── augmentor.py           # Augmentation pipeline
+│   └── augmentor.py           # Resize-only preprocessing (legacy name)
 ├── models/
 │   ├── base_trainer.py        # Abstract trainer base class
 │   ├── yolov11_trainer.py     # YOLOv11 training implementation
