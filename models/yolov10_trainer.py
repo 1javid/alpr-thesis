@@ -55,20 +55,23 @@ class YOLOv10Trainer(BaseTrainer):
 
         # Configure training output directory
         save_dir = os.path.join(self.cfg['output_dir'], 'yolov10_run')
+
+        model_cfg = self.cfg["models"]["yolov10"]
         
         # Execute training with Ultralytics trainer
         # Uses same YOLO-format data configuration as other Ultralytics models
         results = model.train(
             data=self.yolo_yaml,                                    # Path to data YAML
-            epochs=self.cfg['models']['yolov10']['epochs'],         # Training epochs
-            batch=self.cfg['models']['yolov10']['batch'],           # Batch size
+            epochs=model_cfg['epochs'],                             # Training epochs
+            batch=model_cfg['batch'],                               # Batch size
             imgsz=self.cfg['data_engine']['img_size'],              # Input image size
             save_dir=save_dir,                                      # Output directory
             workers=4,                                              # DataLoader workers
             exist_ok=True,                                          # Overwrite existing runs
             device=0,                                               # GPU device (0=first GPU, 'cpu' for CPU, [0,1,2,3] for multi-GPU)
-            patience=self.cfg['models']['yolov10']['patience'],     # Early stopping patience
+            patience=model_cfg['patience'],                         # Early stopping patience
             **self.ultralytics_augmentation_kwargs(),               # Ultralytics training-time augmentation
+            **self.ultralytics_optimizer_lr_kwargs(model_cfg),       # Optimizer/LR overrides
         )
         
         print(f"YOLOv10 Training Finished. Weights saved at: {save_dir}/weights/best.pt")

@@ -143,6 +143,42 @@ class BaseTrainer(ABC):
 
         return self._filter_ultralytics_kwargs(aug)
 
+    def ultralytics_optimizer_lr_kwargs(self, model_cfg: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract optimizer/learning-rate options from a model's config block and
+        convert them into Ultralytics training kwargs.
+
+        Supported keys in `model_cfg`:
+            - optimizer: "auto" (default), "sgd", "adam", "adamw", ...
+            - lr0: base learning rate (float)
+            - lr: alias for lr0 (float)
+            - amp: enable Automatic Mixed Precision (bool)
+            - cache: cache images for faster training (bool or str, Ultralytics-dependent)
+        """
+        if not isinstance(model_cfg, dict):
+            return {}
+
+        kwargs: Dict[str, Any] = {}
+
+        optimizer = model_cfg.get("optimizer", "auto")
+        if optimizer is not None:
+            kwargs["optimizer"] = optimizer
+
+        # Ultralytics uses `lr0` as the base LR. We also accept `lr` as a friendlier alias.
+        lr0 = model_cfg.get("lr0", model_cfg.get("lr", None))
+        if lr0 is not None:
+            kwargs["lr0"] = float(lr0)
+
+        amp = model_cfg.get("amp", None)
+        if amp is not None:
+            kwargs["amp"] = bool(amp)
+
+        cache = model_cfg.get("cache", None)
+        if cache is not None:
+            kwargs["cache"] = cache
+
+        return self._filter_ultralytics_kwargs(kwargs)
+
     @abstractmethod
     def train(self):
         """

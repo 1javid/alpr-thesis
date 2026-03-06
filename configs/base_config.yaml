@@ -37,15 +37,27 @@ models:
     epochs: 100
     batch: 16
     patience: 10
+    optimizer: "auto" # auto, sgd, adam, adamw, rmsprop, ...
+    lr: 0.01          # base learning rate (mapped to Ultralytics `lr0`)
+    amp: True         # mixed precision training (Ultralytics `amp`)
+    cache: False      # dataset caching (Ultralytics `cache`)
 
   yolov10:
     model_name: "yolov10l.pt"
     epochs: 100
     batch: 16
     patience: 10
+    optimizer: "auto"
+    lr: 0.01
+    amp: True
+    cache: False
 
   rtdetrv2:
     model_name: "rtdetr-l.pt"
     epochs: 100
     batch: 16
     patience: 10
+    optimizer: "auto"
+    lr: 0.0001
+    amp: True
+    cache: False
