@@ -1,19 +1,14 @@
 """
 Data Converter Module
 
-Converts processed YOLO-format datasets into multiple model-specific formats.
-Generates configuration files for Ultralytics YOLO models and COCO JSON annotations
-for RT-DETR and other COCO-compatible frameworks.
+Generates:
+  1. Ultralytics YOLO dataset configuration YAML (for YOLO11/YOLO26)
+  2. RF-DETR-compatible COCO JSON annotations.
 
-Key Features:
-    - YOLO YAML generation for Ultralytics models (YOLOv11, YOLOv10)
-    - COCO JSON generation for RT-DETR and MMDetection-compatible models
-    - Automatic format conversion from normalized YOLO to pixel-based COCO
-    - Support for train/val/test splits
-
-Output Formats:
-    1. YOLO YAML: configs/final_data.yaml
-    2. COCO JSON: {target_path}/annotations/instances_{split}.json
+COCO JSONs are written as:
+  processed_data/{train,val,test}/_annotations.coco.json
+with `file_name` entries pointing to the existing YOLO image paths
+(`images/{split}/image.jpg`), so we do not duplicate image files.
 
 Author: ALPR Thesis Project
 """
@@ -21,13 +16,13 @@ Author: ALPR Thesis Project
 import os
 import yaml
 import json
-import cv2
 from tqdm import tqdm
 from PIL import Image
 
+
 class DataConverter:
     """
-    Multi-format dataset converter for object detection models.
+    Dataset converter for object detection models.
     
     This class handles conversion from the unified YOLO-format processed data
     into specific formats required by different model architectures.
@@ -57,10 +52,12 @@ class DataConverter:
         self.names = self.cfg['classes']  # {0: "class_name", ...}
 
         # Define standardized directory structure created by prepare.py
-        # Structure: {target_root}/images/{train,val,test}
+        # Structure: {target_root}/images/{train,valid,test}
+        # NOTE: RF-DETR expects the split name 'valid' (not 'val'), so we
+        # map 'valid' -> 'images/val' here for COCO export.
         self.splits = {
             'train': 'images/train',
-            'val': 'images/val',
+            'valid': 'images/val',
             'test': 'images/test',
         }
 
@@ -114,140 +111,113 @@ class DataConverter:
         print(f"[Ultralytics] YOLO config saved to: {save_path}")
         return save_path
 
-    def convert_to_coco(self):
+    def convert_to_coco_for_rfdetr(self):
         """
-        Convert YOLO-format data to COCO JSON format for RT-DETR and other models.
+        Convert YOLO-format data to COCO JSON format for RF-DETR.
         
-        Converts normalized YOLO bounding boxes to pixel-based COCO format,
-        creating separate JSON annotation files for each dataset split.
+        For each split (train/val/test) that exists under:
+            {target_root}/images/{split}
+        we create:
+            {target_root}/{split}/_annotations.coco.json
         
-        COCO Format Structure:
-            {
-                "images": [{"id", "file_name", "height", "width"}, ...],
-                "annotations": [{"id", "image_id", "category_id", "bbox", "area", "iscrowd"}, ...],
-                "categories": [{"id", "name"}, ...]
-            }
-        
-        Bounding Box Conversion:
-            YOLO (normalized): [x_center, y_center, width, height]
-            COCO (pixel): [x_min, y_min, width, height]
-        
-        Category ID Mapping:
-            YOLO uses 0-indexed class IDs (0, 1, 2, ...)
-            COCO standard uses 1-indexed category IDs (1, 2, 3, ...)
-            This method converts YOLO class IDs to COCO-compatible category IDs
-        
-        Output:
-            {target_root}/annotations/instances_{split}.json for each split
-        
-        Note:
-            Uses PIL for image size reading (faster than OpenCV).
-            Handles malformed label files gracefully by skipping invalid entries.
+        The generated COCO JSON has:
+            images:     file_name set to 'images/{split}/{image_name}'
+            annotations: bbox in COCO pixel format [x_min, y_min, w, h]
+            categories:  1-indexed category IDs
         """
-        # Build COCO categories from class mapping
-        # Convert 0-indexed YOLO class IDs to 1-indexed COCO category IDs
-        categories = [{"id": k + 1, "name": v} for k, v in self.names.items()]
-        
-        print(f"[RT-DETR] Converting processed data to COCO format...")
+        categories = [{"id": k + 1, "name": v, "supercategory": "none"} for k, v in self.names.items()]
 
-        # Create annotations directory
-        output_dir = os.path.join(self.target_root, 'annotations')
-        os.makedirs(output_dir, exist_ok=True)
+        print("[RF-DETR] Converting processed data to COCO format...")
 
-        # Process each split (train/val/test)
         for split, rel_path in self.splits.items():
             img_dir = os.path.join(self.target_root, rel_path)
             if not os.path.exists(img_dir):
                 continue
-            
-            # Determine corresponding label directory
-            lbl_dir = img_dir.replace('images', 'labels')
-            
-            # Initialize COCO data structures
+
+            lbl_dir = img_dir.replace("images", "labels")
+
             images = []
             annotations = []
             ann_id = 0
-            
-            img_files = [f for f in os.listdir(img_dir) if f.endswith(('.jpg', '.png'))]
-            
-            # Process each image in the split
+
+            img_files = [f for f in os.listdir(img_dir) if f.lower().endswith((".jpg", ".jpeg", ".png"))]
+
             for img_id, img_file in enumerate(tqdm(img_files, desc=f"Converting {split}")):
                 img_path = os.path.join(img_dir, img_file)
-                
-                # Read image dimensions (PIL is faster than OpenCV for this)
+
                 with Image.open(img_path) as img:
                     w, h = img.size
 
-                # Add image metadata to COCO format
-                images.append({
-                    "id": img_id,
-                    "file_name": img_file,
-                    "height": h,
-                    "width": w
-                })
-                
-                # Read and convert YOLO labels to COCO annotations
+                # RF-DETR resolves: dataset_dir/split/file_name.
+                # Our images are at: processed_data/images/{rel_path}/img.
+                # COCO JSON is at:   processed_data/{split}/_annotations.coco.json.
+                # So file_name must go one level up: ../images/{split_dir}/img.
+                file_name = os.path.join("..", rel_path, img_file)
+
+                images.append(
+                    {
+                        "id": img_id,
+                        "file_name": file_name,
+                        "height": h,
+                        "width": w,
+                    }
+                )
+
                 lbl_file = os.path.splitext(img_file)[0] + ".txt"
                 lbl_path = os.path.join(lbl_dir, lbl_file)
-                
+
                 if os.path.exists(lbl_path):
-                    with open(lbl_path, 'r') as f:
+                    with open(lbl_path, "r") as f:
                         lines = f.readlines()
-                    
+
                     for line in lines:
                         parts = line.strip().split()
                         if len(parts) < 5:
-                            # Malformed line, skip
                             continue
-                        
-                        # Parse class ID (handle float-like strings, e.g., "0.0")
+
                         try:
-                            yolo_class_id = int(float(parts[0]))  # YOLO uses 0-indexed
+                            yolo_class_id = int(float(parts[0]))
                         except ValueError:
-                            # Cannot parse class ID, skip this line
                             continue
-                        
-                        # Convert YOLO class ID (0-indexed) to COCO category ID (1-indexed)
+
                         coco_category_id = yolo_class_id + 1
-                        
-                        # Parse YOLO bbox (normalized coordinates)
+
                         x_c, y_c, w_bbox, h_bbox = map(float, parts[1:5])
-                        
-                        # Convert YOLO (normalized) to COCO (pixel) format
-                        # YOLO: [x_center, y_center, width, height] (0-1)
-                        # COCO: [x_min, y_min, width, height] (pixels)
-                        x_min = (x_c - w_bbox/2) * w
-                        y_min = (y_c - h_bbox/2) * h
+
+                        x_min = (x_c - w_bbox / 2) * w
+                        y_min = (y_c - h_bbox / 2) * h
                         width = w_bbox * w
                         height = h_bbox * h
-                        
-                        # Add annotation to COCO format
-                        annotations.append({
-                            "id": ann_id,
-                            "image_id": img_id,
-                            "category_id": coco_category_id,  # Use 1-indexed category ID
-                            "bbox": [x_min, y_min, width, height],
-                            "area": width * height,
-                            "iscrowd": 0
-                        })
+
+                        annotations.append(
+                            {
+                                "id": ann_id,
+                                "image_id": img_id,
+                                "category_id": coco_category_id,
+                                "bbox": [x_min, y_min, width, height],
+                                "area": width * height,
+                                "iscrowd": 0,
+                            }
+                        )
                         ann_id += 1
-            
-            # Assemble complete COCO JSON structure
+
             coco_output = {
                 "images": images,
                 "annotations": annotations,
-                "categories": categories
+                "categories": categories,
             }
-            
-            # Save COCO JSON file
-            json_name = f"instances_{split}.json"
-            json_path = os.path.join(output_dir, json_name)
-            with open(json_path, 'w') as f:
+
+            # Write to {target_root}/{split}/_annotations.coco.json
+            split_dir = os.path.join(self.target_root, split)
+            os.makedirs(split_dir, exist_ok=True)
+            json_path = os.path.join(split_dir, "_annotations.coco.json")
+            with open(json_path, "w") as f:
                 json.dump(coco_output, f)
-            
+
             print(f"  -> {split}: {len(images)} images, {len(annotations)} annotations")
 
-        print(f"[RT-DETR] COCO annotations saved to: {output_dir}")
+        print("[RF-DETR] COCO annotations saved under processed_data/{train,val,test}/_annotations.coco.json")
+
 
 if __name__ == "__main__":
     """
@@ -258,7 +228,7 @@ if __name__ == "__main__":
     
     Generates:
         1. configs/final_data.yaml (YOLO format)
-        2. {target_path}/annotations/instances_*.json (COCO format)
+        2. processed_data/{train,val,test}/_annotations.coco.json (RF-DETR COCO format)
     """
     print("=== Data Format Converter ===\n")
     
@@ -266,9 +236,9 @@ if __name__ == "__main__":
     
     # Generate YOLO configuration for Ultralytics models
     c.generate_yolo_yaml()
-    
-    # Generate COCO JSON annotations for RT-DETR and compatible models
-    c.convert_to_coco()
+
+    # Generate COCO JSON annotations for RF-DETR
+    c.convert_to_coco_for_rfdetr()
     
     print("\n=== Conversion Complete ===")
     print("Models can now be trained using the generated configuration files.")

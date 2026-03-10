@@ -2,13 +2,13 @@
 Train Module - ALPR Object Detection System
 
 This module provides a unified training interface for multiple object detection models.
-All models use the Ultralytics framework for consistency and ease of use.
-Supports YOLOv11, YOLOv10, and RT-DETRv2 architectures with configuration-driven training.
+Supports YOLOv11, YOLOv26 (Ultralytics), and RF-DETR-S (Roboflow) architectures
+with configuration-driven training.
 
 Usage:
     python train.py --model yolov11 --config configs/base_config.yaml
-    python train.py --model yolov10 --config configs/base_config.yaml
-    python train.py --model rtdetrv2 --config configs/base_config.yaml
+    python train.py --model yolov26 --config configs/base_config.yaml
+    python train.py --model rfdetr --config configs/base_config.yaml
 
 Author: ALPR Thesis Project
 """
@@ -23,8 +23,8 @@ import yaml
 sys.path.append(os.getcwd())
 
 from models.yolov11_trainer import YOLOv11Trainer
-from models.yolov10_trainer import YOLOv10Trainer
-from models.rtdetr_trainer import RTDETRv2Trainer
+from models.yolov26_trainer import YOLOv26Trainer
+from models.rfdetr_trainer import RFDETRSTrainer
 from utils.seed_utils import get_seed_from_config, set_global_seed
 
 def main():
@@ -35,7 +35,7 @@ def main():
     the appropriate model trainer based on user selection.
     
     Command-line Arguments:
-        --model: Model architecture to train (yolov11, yolov10, rtdetrv2)
+        --model: Model architecture to train (yolov11, yolov26, rfdetr)
         --config: Path to YAML configuration file (default: configs/base_config.yaml)
     
     Raises:
@@ -45,11 +45,11 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Modular Object Detection Trainer")
     parser.add_argument(
-        '--model', 
-        type=str, 
-        required=True, 
-        choices=['yolov11', 'yolov10', 'rtdetrv2'],
-        help="Model architecture to train: 'yolov11', 'yolov10', or 'rtdetrv2' (all via Ultralytics)"
+        '--model',
+        type=str,
+        required=True,
+        choices=['yolov11', 'yolov26', 'rfdetr'],
+        help="Model architecture to train: 'yolov11', 'yolov26', or 'rfdetr'"
     )
     parser.add_argument(
         '--config', 
@@ -71,12 +71,10 @@ def main():
     # Initialize appropriate trainer based on model selection
     if args.model == 'yolov11':
         trainer = YOLOv11Trainer(cfg)
-        
-    elif args.model == 'yolov10':
-        trainer = YOLOv10Trainer(cfg)
-
-    elif args.model == 'rtdetrv2':
-        trainer = RTDETRv2Trainer(cfg)
+    elif args.model == 'yolov26':
+        trainer = YOLOv26Trainer(cfg)
+    elif args.model == 'rfdetr':
+        trainer = RFDETRSTrainer(cfg)
 
     # Execute training loop
     trainer.train()

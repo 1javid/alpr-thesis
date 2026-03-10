@@ -3,11 +3,11 @@ Data Engine Package - ALPR Object Detection System
 
 This package handles all data processing operations including:
 - Multi-dataset merging and preprocessing
-- Format conversion (YOLO ↔ COCO)
+- YOLO dataset configuration generation (Ultralytics)
 
 Modules:
     prepare: Dataset merging and resize-only preprocessing
-    converter: Format conversion between YOLO and COCO formats
+    converter: YOLO YAML generation for Ultralytics/RF-DETR
     augmentor: Resize-only preprocessing helper (legacy name)
 
 Typical Workflow:

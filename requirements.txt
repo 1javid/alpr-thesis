@@ -29,13 +29,14 @@ pandas                     # Data manipulation
 numpy                      # Array operations
 
 # Object Detection Models
-ultralytics                # YOLOv11, YOLOv10, RT-DETRv2 (unified framework)
+ultralytics                # YOLOv11, YOLOv26 (unified framework)
+rfdetr                     # RF-DETR-S (Roboflow detector)
 
 # Additional Tools
 onnx                       # Model export format
 onnxruntime                # ONNX inference engine
 tensorboard                # Training visualization
-pycocotools                # COCO dataset tools (requires build-essential on Linux)
+# pycocotools              # COCO tools (not required; project trains on YOLO format)
 
 # Optional: Uncomment for additional features
 # matplotlib                # Plotting and visualization

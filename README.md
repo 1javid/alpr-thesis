@@ -1,11 +1,11 @@
 # ALPR Object Detection System
 
-Multi-model object detection framework for license plate recognition research. Trains and compares YOLOv11, YOLOv10, and RT-DETRv2 using Ultralytics.
+Multi-model object detection framework for license plate recognition research. Trains and compares YOLOv11-S, YOLO26-S (Ultralytics), and RF-DETR-S.
 
 ## Features
 
-- Train and compare three models: YOLOv11-L, YOLOv10-L, RT-DETRv2-L
-- All models use Ultralytics framework for consistency
+- Train and compare three models: YOLOv11-S, YOLO26-S (Ultralytics), RF-DETR-S
+- Ultralytics pipeline for YOLO models, RF-DETR library for RF-DETR-S
 - Merge multiple datasets automatically
 - Data augmentation via Ultralytics (training-time)
 - Single config file for everything
@@ -20,13 +20,13 @@ alpr-thesis/
 │   └── final_data.yaml        # Auto-generated YOLO data config
 ├── data_engine/
 │   ├── prepare.py             # Dataset merging and resize-only preprocessing
-│   ├── converter.py           # Format conversion (YOLO ↔ COCO)
+│   ├── converter.py           # Generate Ultralytics YOLO data.yaml
 │   └── augmentor.py           # Resize-only preprocessing (legacy name)
 ├── models/
 │   ├── base_trainer.py        # Abstract trainer base class
-│   ├── yolov11_trainer.py     # YOLOv11 training implementation
-│   ├── yolov10_trainer.py     # YOLOv10 training implementation
-│   └── rtdetr_trainer.py      # RT-DETRv2 training implementation
+│   ├── yolov11_trainer.py     # YOLOv11-S training implementation
+│   ├── yolov26_trainer.py     # YOLO26-S training implementation
+│   └── rfdetr_trainer.py      # RF-DETR-S training implementation
 ├── train.py                   # Training entry point
 ├── infer.py                   # Inference entry point
 └── requirements.txt           # Project dependencies
@@ -167,8 +167,8 @@ python data_engine/converter.py
 
 ```bash
 python train.py --model yolov11 --config configs/base_config.yaml
-python train.py --model yolov10 --config configs/base_config.yaml
-python train.py --model rtdetrv2 --config configs/base_config.yaml
+python train.py --model yolov26 --config configs/base_config.yaml
+python train.py --model rfdetr --config configs/base_config.yaml
 ```
 
 Weights saved to `runs/{model}_run/weights/best.pt`
@@ -179,22 +179,19 @@ Weights saved to `runs/{model}_run/weights/best.pt`
 # Single image
 python infer.py --model yolov11 --weights runs/yolov11_run/weights/best.pt --source test.jpg
 
-# Directory
-python infer.py --model yolov10 --weights runs/yolov10_run/weights/best.pt --source test_images/
-
-# RT-DETRv2
-python infer.py --model rtdetrv2 --weights runs/rtdetrv2_run/weights/best.pt --source test.jpg
+# YOLO26
+python infer.py --model yolov26 --weights runs/yolov26_run/weights/best.pt --source test.jpg
 ```
 
 Results saved to `runs/inference/{model}/`
 
 ## Models
 
-All models use Large variants via Ultralytics:
+Pretrained weights are stored locally under `weights/` for offline training:
 
-- **YOLOv11-L** (`yolo11l.pt`) - Latest YOLO, best accuracy
-- **YOLOv10-L** (`yolov10l.pt`) - End-to-end, no NMS
-- **RT-DETRv2-L** (`rtdetr-l.pt`) - Transformer-based
+- **YOLOv11-S** (`weights/yolo11s.pt`) - Ultralytics YOLO11 small
+- **YOLO26-S** (`weights/yolo26s.pt`) - Ultralytics YOLO26 small
+- **RF-DETR-S** (`weights/rfdetr-s.pth`) - RF-DETR small (Roboflow)
 
 ## Configuration
 
@@ -204,17 +201,25 @@ Edit `configs/base_config.yaml`:
 # Models
 models:
   yolov11:
-    model_name: "yolo11l.pt"
+    model_name: "weights/yolo11s.pt"
     epochs: 100
     batch: 16
-  yolov10:
-    model_name: "yolov10l.pt"
+    optimizer: "auto"
+    lr: 0.001
+
+  yolov26:
+    model_name: "weights/yolo26s.pt"
     epochs: 100
     batch: 16
-  rtdetrv2:
-    model_name: "rtdetr-l.pt"
-    epochs: 100
-    batch: 16
+    optimizer: "auto"
+    lr: 0.001
+
+  rfdetr:
+    model_size: "s"
+    pretrain_weights: "weights/rfdetr-s.pth"
+    epochs: 50
+    batch: 8
+    lr: 1e-4
 
 # Classes
 classes:
@@ -226,11 +231,16 @@ data_engine:
   augmentation:
     enable: true
     prob: 0.5
+    params:
+      brightness_contrast: 0.2
+      shift_scale_rotate: true
+      perspective: true
+      shear: true
 ```
 
 **Batch sizes for Large models:**
-- 16GB GPU: 8-16
-- 24GB GPU: 16-32
+- 16GB GPU: batch 8–16 (YOLO), batch 4–8 (RF-DETR)
+- 24GB GPU: batch 16–32 (YOLO), batch 8–16 (RF-DETR)
 
 ## Output
 
