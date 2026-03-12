@@ -13,7 +13,7 @@ Outputs (no annotated images):
     f1_curve.png                 -- F1 score vs confidence threshold curve
     confusion_matrix.png         -- TP / FP / FN confusion matrix heatmap
 
-Supports YOLOv11, YOLOv10, and RT-DETRv2 via Ultralytics.
+Supports YOLOv11 and YOLOv26 via Ultralytics, and RF-DETR via the `rfdetr` library.
 
 Usage:
     python evaluate.py --model yolov11 \\
@@ -76,13 +76,25 @@ def load_ground_truth(csv_path):
 
     gt = defaultdict(list)
     plate_counts = {}
+    skipped = 0
     for _, row in df.iterrows():
-        fname = str(row["file_name"])
-        box = [float(row["xmin"]), float(row["ymin"]),
-               float(row["xmax"]), float(row["ymax"])]
+        try:
+            fname = str(row["file_name"])
+            box = [
+                float(row["xmin"]),
+                float(row["ymin"]),
+                float(row["xmax"]),
+                float(row["ymax"]),
+            ]
+            count = int(row["plates_count"])
+        except (ValueError, TypeError):
+            skipped += 1
+            continue
         gt[fname].append(box)
-        # If multiple rows share the same file_name they should share the same plates_count
-        plate_counts[fname] = int(row["plates_count"])
+        plate_counts[fname] = count
+
+    if skipped:
+        print(f"  Warning: skipped {skipped} CSV rows with missing or invalid values.")
 
     return dict(gt), plate_counts
 
@@ -96,18 +108,18 @@ def load_model(model_type, weights_path):
     Load a trained Ultralytics model.
 
     Args:
-        model_type (str): 'yolov11', 'yolov10', or 'rtdetrv2'.
-        weights_path (str): Path to trained weights (.pt file).
+        model_type (str): 'yolov11', 'yolov26', or 'rfdetr'.
+        weights_path (str): Path to trained weights (YOLO .pt or RF-DETR checkpoint).
 
     Returns:
         Ultralytics model instance.
     """
-    if model_type in ("yolov11", "yolov10"):
+    if model_type in ("yolov11", "yolov26"):
         from ultralytics import YOLO
         return YOLO(weights_path)
-    elif model_type == "rtdetrv2":
-        from ultralytics import RTDETR
-        return RTDETR(weights_path)
+    elif model_type == "rfdetr":
+        from rfdetr import RFDETRSmall
+        return RFDETRSmall(pretrain_weights=weights_path)
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 
@@ -116,12 +128,12 @@ def load_model(model_type, weights_path):
 # Inference
 # ---------------------------------------------------------------------------
 
-def run_inference(model, img_path):
+def run_inference(model, img_path, model_type):
     """
     Run inference on a single image.
 
     Args:
-        model: Loaded Ultralytics model.
+        model: Loaded model (Ultralytics YOLO or RF-DETR).
         img_path (str): Path to image file.
 
     Returns:
@@ -133,17 +145,54 @@ def run_inference(model, img_path):
         print(f"  Warning: could not load image: {img_path}")
         return []
 
-    results = model(img, verbose=False)
     detections = []
-    for result in results:
-        if result.boxes is None:
-            continue
-        boxes_xyxy = result.boxes.xyxy.cpu().numpy()
-        confs = result.boxes.conf.cpu().numpy()
+
+    if model_type in ("yolov11", "yolov26"):
+        results = model(img, verbose=False)
+        for result in results:
+            if result.boxes is None:
+                continue
+            boxes_xyxy = result.boxes.xyxy.cpu().numpy()
+            confs = result.boxes.conf.cpu().numpy()
+            for box, conf in zip(boxes_xyxy, confs):
+                detections.append(
+                    [
+                        float(conf),
+                        float(box[0]),
+                        float(box[1]),
+                        float(box[2]),
+                        float(box[3]),
+                    ]
+                )
+    elif model_type == "rfdetr":
+        # RF-DETR uses the `rfdetr` API and returns a supervision.Detections object.
+        # We adapt it to the same [conf, xmin, ymin, xmax, ymax] format.
+        try:
+            dets = model.predict(img_path)
+        except TypeError:
+            # Some versions expect explicit threshold arg; fall back gracefully.
+            dets = model.predict(img_path, threshold=0.0)
+
+        # Supervision Detections typically expose `.xyxy` and `.confidence`.
+        xyxy = getattr(dets, "xyxy", None)
+        confs = getattr(dets, "confidence", None)
+        if xyxy is None or confs is None:
+            print("  Warning: RF-DETR predict() did not return xyxy/confidence as expected.")
+            return []
+
+        boxes_xyxy = np.array(xyxy)
+        confs = np.array(confs)
         for box, conf in zip(boxes_xyxy, confs):
-            detections.append([float(conf),
-                                float(box[0]), float(box[1]),
-                                float(box[2]), float(box[3])])
+            detections.append(
+                [
+                    float(conf),
+                    float(box[0]),
+                    float(box[1]),
+                    float(box[2]),
+                    float(box[3]),
+                ]
+            )
+
     return detections
 
 
@@ -513,7 +562,7 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
     Full evaluation pipeline: inference → matching → metrics → plots → CSVs.
 
     Args:
-        model_type (str): 'yolov11', 'yolov10', or 'rtdetrv2'.
+        model_type (str): 'yolov11', 'yolov26', or 'rfdetr'.
         weights_path (str): Path to trained model weights.
         images_dir (str): Directory containing test images.
         labels_csv (str): CSV with file_name, xmin, ymin, xmax, ymax columns.
@@ -563,7 +612,7 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
             continue
 
         gt_boxes = ground_truth[img_file]
-        detections = run_inference(model, img_path)
+        detections = run_inference(model, img_path, model_type)
         preds = [d for d in detections if d[0] >= conf_threshold]
 
         all_preds_per_image[img_file] = preds
@@ -705,8 +754,8 @@ def main():
         "--model",
         type=str,
         required=True,
-        choices=["yolov11", "yolov10", "rtdetrv2"],
-        help="Model architecture: 'yolov11', 'yolov10', or 'rtdetrv2'",
+        choices=["yolov11", "yolov26", "rfdetr"],
+        help="Model architecture: 'yolov11', 'yolov26', or 'rfdetr'",
     )
     parser.add_argument(
         "--weights",

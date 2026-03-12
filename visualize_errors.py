@@ -16,14 +16,9 @@ Usage:
         --predictions runs/evaluation/yolov11/predictions_detailed.csv
 
     python visualize_errors.py \
-        --model yolov10 \
+        --model yolov26 \
         --images path/to/test/images \
-        --predictions runs/evaluation/yolov10/predictions_detailed.csv
-
-    python visualize_errors.py \
-        --model rtdetrv2 \
-        --images path/to/test/images \
-        --predictions runs/evaluation/rtdetrv2/predictions_detailed.csv
+        --predictions runs/evaluation/yolov26/predictions_detailed.csv
 
 Options:
     --output  Custom output directory (default: runs/qualitative/{model}/iou_lt_0_5)
@@ -177,7 +172,7 @@ def visualize_errors(model_type, images_dir, predictions_csv, output_dir, limit=
     confidence scores onto the corresponding images and saving them.
 
     Args:
-        model_type (str): 'yolov11', 'yolov10', or 'rtdetrv2' (for output organisation only).
+        model_type (str): 'yolov11' or 'yolov26' (for output organisation only).
         images_dir (str): Directory containing the original test images.
         predictions_csv (str): Path to predictions_detailed.csv from evaluate.py.
         output_dir (str): Directory to save annotated error images.
@@ -224,7 +219,7 @@ def main():
         "--model",
         type=str,
         required=True,
-        choices=["yolov11", "yolov10", "rtdetrv2"],
+        choices=["yolov11", "yolov26"],
         help="Model architecture (used for organising output directories).",
     )
     parser.add_argument(

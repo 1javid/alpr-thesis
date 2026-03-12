@@ -65,7 +65,7 @@ class DataConverter:
         """
         Generate YAML configuration file for Ultralytics YOLO models.
         
-        Creates a configuration file that Ultralytics YOLO models (YOLOv10, YOLOv11)
+        Creates a configuration file that Ultralytics YOLO models (YOLOv11, YOLOv26)
         use to locate training/validation/test data and understand class mappings.
         
         Args:

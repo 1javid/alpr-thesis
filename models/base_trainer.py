@@ -3,7 +3,7 @@ Base Trainer Module
 
 Provides an abstract base class for all model trainers in the ALPR system.
 This ensures consistent interface and data path handling across different
-model architectures (YOLOv11, YOLOv10, RT-DETRv2, etc.).
+model architectures (YOLOv11, YOLOv26, etc.).
 
 Author: ALPR Thesis Project
 """

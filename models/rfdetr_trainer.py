@@ -39,7 +39,7 @@ class RFDETRSTrainer(BaseTrainer):
         print("--- Starting RF-DETR-S Training ---")
 
         try:
-            from rfdetr import RFDETRBase  # type: ignore
+            from rfdetr import RFDETRSmall  # type: ignore
         except ImportError as e:
             raise ImportError(
                 "The 'rfdetr' package is required for RF-DETR-S training. "
@@ -56,7 +56,7 @@ class RFDETRSTrainer(BaseTrainer):
         save_dir = os.path.join(self.cfg["output_dir"], "rfdetr_run")
         os.makedirs(save_dir, exist_ok=True)
 
-        model = RFDETRBase(model_size=model_cfg.get("model_size", "s"))
+        model = RFDETRSmall()
 
         # RF-DETR has its own training API; we pass common hyperparameters.
         model.train(
