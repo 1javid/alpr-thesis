@@ -6,6 +6,7 @@ runs inference with a trained model, and computes standard object detection metr
 
 Outputs (no annotated images):
     metrics_summary.json         -- aggregate metrics (precision, recall, F1, mAP@0.5, mAP@0.5:0.95)
+                                    and inference speed (mean latency ms, FPS)
     per_image_results.csv        -- per-image TP / FP / FN / precision / recall
     predictions_detailed.csv     -- one row per detection (TP/FP/FN) with GT and predicted
                                     bounding box coordinates, confidence score, and IoU
@@ -36,6 +37,7 @@ import os
 import json
 import csv
 import sys
+import time
 import numpy as np
 import pandas as pd
 import cv2
@@ -596,6 +598,7 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
     all_matches_05 = []     # for PR/F1 curves at IoU=0.5
     total_gt_05 = 0
     skipped = 0
+    inference_times_ms = []  # per-image inference latency for speed metrics
 
     for img_file in image_files:
         img_path = os.path.join(images_dir, img_file)
@@ -612,7 +615,11 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
             continue
 
         gt_boxes = ground_truth[img_file]
+        t0 = time.perf_counter()
         detections = run_inference(model, img_path, model_type)
+        t1 = time.perf_counter()
+        inference_ms = (t1 - t0) * 1000.0
+        inference_times_ms.append(inference_ms)
         preds = [d for d in detections if d[0] >= conf_threshold]
 
         all_preds_per_image[img_file] = preds
@@ -634,6 +641,7 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
             "tp": tp, "fp": fp, "fn": fn,
             "precision": round(prec, 4),
             "recall": round(rec, 4),
+            "inference_ms": round(inference_ms, 2),
         })
 
         all_matches_05.extend({"conf": m["conf"], "tp": m["tp"]} for m in tp_fp_list)
@@ -659,6 +667,10 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
     map50   = ap_dict[0.5]
     map5095 = float(np.mean(list(ap_dict.values())))
 
+    # Inference speed (mean latency and FPS over evaluated images)
+    mean_inference_ms = float(np.mean(inference_times_ms)) if inference_times_ms else 0.0
+    inference_fps = 1000.0 / mean_inference_ms if mean_inference_ms > 0 else 0.0
+
     summary = {
         "model": model_type,
         "weights": weights_path,
@@ -676,6 +688,8 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
         "mAP@0.5":        round(map50,     4),
         "mAP@0.5:0.95":   round(map5095,   4),
         "AP_per_IoU_threshold": {str(k): round(v, 4) for k, v in ap_dict.items()},
+        "inference_mean_ms": round(mean_inference_ms, 2),
+        "inference_fps":     round(inference_fps, 2),
     }
 
     # -----------------------------------------------------------------------
@@ -694,7 +708,7 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
 
     # 2. per_image_results.csv
     per_image_path = os.path.join(output_dir, "per_image_results.csv")
-    fieldnames = ["file_name", "num_gt", "num_pred", "tp", "fp", "fn", "precision", "recall"]
+    fieldnames = ["file_name", "num_gt", "num_pred", "tp", "fp", "fn", "precision", "recall", "inference_ms"]
     with open(per_image_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -736,6 +750,7 @@ def evaluate(model_type, weights_path, images_dir, labels_csv,
     print(f"  F1             : {summary['f1']}")
     print(f"  mAP@0.5        : {summary['mAP@0.5']}")
     print(f"  mAP@0.5:0.95   : {summary['mAP@0.5:0.95']}")
+    print(f"  Inference      : {summary['inference_mean_ms']} ms/img  ({summary['inference_fps']} FPS)")
     print("=" * 52)
     print(f"\nResults saved to: {output_dir}")
     for p in [summary_path, per_image_path, detailed_path, pr_path, f1_path, cm_path]:
